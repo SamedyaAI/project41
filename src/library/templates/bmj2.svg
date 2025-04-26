@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1100">
+  <defs>
+    <style>
+      /* Color palette (Using provided names, ensure hex values match original if possible) */
+      :root {
+        --primary-blue: #0072BC; /* BMJ Blue Approx */
+        --light-blue: #F0F4F7; /* Lighter background than original, adjust if needed */
+        --medium-blue: #50A0D0;
+        --dark-blue: #005B94;
+        --orange: #FDB913; /* Approx chart orange */
+        --purple: #5B5FAE; /* Approx chart purple */
+        --coral: #FF6F61; /* Illustration color */
+        --dark-gray: #333333; /* Standard dark text */
+        --light-gray: #F5F5F5; /* Card background - okay */
+        --medium-gray: #AAAAAA; /* Lines */
+        --stroke-gray: #E0E0E0; /* Card Stroke */
+        --white: #FFFFFF;
+        --chart-area-purple: #A8A2D1; /* Approx IQR Purple */
+        --chart-area-orange: #FDDC9A; /* Approx IQR Orange */
+      }
+
+      /* Text styles */
+      text {
+        font-family: Arial, Helvetica, sans-serif; /* Added Helvetica as fallback */
+        fill: var(--dark-gray);
+        dominant-baseline: central; /* Better vertical alignment control */
+      }
+      .title {
+        font-size: 24px; /* Slightly adjusted */
+        font-weight: bold;
+      }
+      .subtitle {
+        font-size: 20px; /* Adjusted */
+        font-weight: bold;
+        fill: var(--primary-blue);
+      }
+      .body-text {
+        font-size: 15px; /* Adjusted */
+        line-height: 1.4; /* Added for potential multi-line text */
+      }
+      .data-point {
+        font-size: 16px; /* Adjusted */
+        font-weight: bold;
+      }
+      .chart-title {
+        font-size: 18px; /* Adjusted */
+        font-weight: bold;
+      }
+      .chart-label {
+        font-size: 13px; /* Adjusted */
+      }
+      .chart-data {
+        font-size: 11px; /* Adjusted */
+      }
+      .stat-highlight {
+        font-size: 22px; /* Adjusted */
+        font-weight: bold;
+        fill: var(--primary-blue);
+      }
+      .small-white-text {
+         font-family: Arial, Helvetica, sans-serif;
+         font-size: 13px;
+         fill: var(--white);
+         dominant-baseline: central;
+      }
+      .small-blue-text {
+         font-family: Arial, Helvetica, sans-serif;
+         font-size: 13px;
+         fill: var(--primary-blue);
+         dominant-baseline: central;
+      }
+      .footer-text {
+        font-size: 13px;
+      }
+
+      /* Shape styles */
+      .card {
+        fill: var(--white);
+        stroke: var(--stroke-gray);
+        stroke-width: 1;
+        rx: 8; /* Adjusted */
+        ry: 8;
+      }
+      .header-bg {
+        fill: var(--primary-blue);
+      }
+      /* Base Icon Styling */
+      .icon-shape {
+         fill: var(--primary-blue);
+         stroke: none;
+      }
+      .icon-path-white {
+          stroke: var(--white);
+          stroke-width: 2;
+          fill: none;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+      }
+      .summary-quote {
+        fill: none;
+        stroke: var(--primary-blue);
+        stroke-width: 3;
+      }
+      .purple-box {
+        fill: var(--purple);
+        rx: 6; /* Adjusted */
+        ry: 6;
+      }
+      .orange-box {
+        fill: var(--orange);
+        rx: 6; /* Adjusted */
+        ry: 6;
+      }
+      .survival-line {
+        fill: none;
+        stroke: var(--purple);
+        stroke-width: 2;
+      }
+      .survival-area {
+        fill: var(--chart-area-purple); /* Use specific color */
+        opacity: 0.6; /* Adjusted opacity */
+      }
+      .admission-line {
+        fill: none;
+        stroke: var(--orange);
+        stroke-width: 2;
+      }
+      .admission-area {
+        fill: var(--chart-area-orange); /* Use specific color */
+        opacity: 0.6; /* Adjusted opacity */
+      }
+      .divider-line {
+          stroke: var(--medium-gray);
+          stroke-width: 1;
+      }
+    </style>
+  </defs>
+
+  <rect width="1200" height="1100" fill="var(--light-blue)" />
+
+  <g id="header" transform="translate(20, 20)">
+    <rect x="0" y="0" width="100" height="50" class="header-bg" rx="5" ry="5" />
+    <text x="10" y="26" fill="white" font-size="18px" font-weight="bold">EJOMR</text>
+    <circle cx="130" cy="15" r="7" fill="none" stroke="var(--primary-blue)" stroke-width="1.5"/>
+    <circle cx="130" cy="15" r="3" fill="var(--primary-blue)"/>
+    <text x="150" y="15" font-size="14px">Research Article</text>
+
+    <text x="450" y="15" class="title">Association of sarcopenia index,</text>
+    <text x="450" y="45" class="title">based on serum creatinine and cystatin C, with incident diabetes mellitus</text>
+  </g>
+
+  <g id="summary-section" transform="translate(20, 90)">
+    <rect x="0" y="0" width="1160" height="100" class="card" />
+
+    <g id="summary-icon" transform="translate(25, 30)">
+        <rect x="0" y="0" width="40" height="40" rx="5" ry="5" class="icon-shape"/>
+        <path d="M5 10 L 35 10 M5 20 L 25 20 M5 30 L 30 30" class="icon-path-white"/>
+     </g>
+    <text x="85" y="51" class="subtitle">Summary</text>
+
+    <g id="life-expectancy-table" transform="translate(200, 20)">
+      <text x="0" y="10" class="body-text">This study investigated the association between a sarcopenia index</text>
+      <text x="0" y="30" class="body-text">and risk of developing diabetes mellitus in middle-aged and older adults.</text>
+      <text x="0" y="50" class="body-text">The sarcopenia index = serum creatinine (mg/dL) / serum cystatin C (mg/dL) * 100</text>
+      <text x="0" y="70" class="body-text">Higher sarcopenia index may indicate better muscle mass and function.</text>
+    </g>
+
+    <line x1="680" y1="15" x2="680" y2="85" class="divider-line" />
+
+    <g id="key-finding" transform="translate(720, 25)">
+      <text x="0" y="10" class="body-text">A higher sarcopenia index was associated with</text>
+      <text x="0" y="30" class="body-text">a lower risk of developing diabetes mellitus</text>
+      <text x="0" y="50" class="body-text">in Chinese middle-aged and older adults</text>
+    </g>
+  </g>
+
+  <g id="study-design" transform="translate(20, 210)">
+    <rect x="0" y="0" width="1160" height="80" class="card" />
+
+    <g id="study-design-icon" transform="translate(25, 20)">
+       <rect x="0" y="0" width="40" height="40" rx="5" ry="5" class="icon-shape"/>
+       <path d="M10 5 L 30 5 M10 12 L 30 12 M10 19 L 30 19 M10 26 L 20 26 M10 33 L 25 33" class="icon-path-white"/>
+    </g>
+    <text x="85" y="41" class="subtitle">Study design</text>
+
+    <g transform="translate(300, 25)">
+       <rect x="0" y="0" width="30" height="30" fill="#EEEEEE" stroke="var(--primary-blue)" stroke-width="1" rx="3" ry="3"/>
+       <path d="M7 15 L 23 15 M15 7 L 15 23" stroke="var(--primary-blue)" stroke-width="2" />
+       <text x="45" y="8" class="body-text">Longitudinal cohort study</text>
+       <text x="45" y="28" class="body-text">(China Health and Retirement Longitudinal Study, CHARLS)</text>
+    </g>
+
+    <line x1="620" y1="15" x2="620" y2="65" class="divider-line" />
+
+    <g transform="translate(660, 25)">
+      <text x="0" y="8" class="body-text">Follow-up period:</text>
+      <text x="0" y="28" class="body-text">Mean 5.0 years (2015-2020)</text>
+    </g>
+
+    <g transform="translate(900, 25)">
+      <text x="0" y="8" class="body-text">Cox proportional hazards</text>
+      <text x="0" y="28" class="body-text">regression models</text>
+    </g>
+  </g>
+
+  <g id="data-sources" transform="translate(20, 310)">
+    <rect x="0" y="0" width="1160" height="120" class="card" />
+
+    <g id="data-sources-icon" transform="translate(25, 20)">
+        <rect x="0" y="0" width="40" height="40" rx="5" ry="5" class="icon-shape"/>
+        <circle cx="13" cy="15" r="6" fill="white"/>
+        <path d="M5 35 C 5 25, 21 25, 21 35 Z" fill="white"/>
+        <circle cx="27" cy="15" r="6" fill="white"/>
+        <path d="M19 35 C 19 25, 35 25, 35 35 Z" fill="white"/>
+     </g>
+    <text x="85" y="41" class="subtitle">Study population</text>
+
+    <g transform="translate(280, 25)">
+        <rect x="0" y="0" width="30" height="30" fill="var(--primary-blue)" rx="3" ry="3" />
+         <path d="M7 8 L 12 8 M 16 8 L 23 8 M 7 15 L 12 15 M 16 15 L 23 15 M 7 22 L 12 22 M 16 22 L 23 22" stroke="white" stroke-width="1.5"/>
+        <text x="45" y="8" class="body-text">7,718 participants from China</text>
+        <text x="45" y="28" class="body-text">aged ≥45 years without diabetes at baseline</text>
+    </g>
+
+    <line x1="580" y1="15" x2="580" y2="105" class="divider-line" />
+
+    <g transform="translate(620, 25)">
+       <circle cx="10" cy="10" r="8" fill="var(--primary-blue)" />
+       <path d="M3 25 C 3 18, 17 18, 17 25 Z" fill="var(--primary-blue)"/>
+       <circle cx="25" cy="10" r="8" fill="var(--primary-blue)" />
+       <path d="M18 25 C 18 18, 32 18, 32 25 Z" fill="var(--primary-blue)"/>
+      <text x="45" y="18" class="body-text">Median age: 60 years</text>
+      <text x="45" y="42" class="body-text">Males: 46.2%</text>
+    </g>
+
+    <line x1="860" y1="15" x2="860" y2="105" class="divider-line" />
+
+    <g transform="translate(900, 20)">
+        <text x="0" y="8" class="body-text">During follow-up,</text>
+        <text x="0" y="32" class="stat-highlight">501</text>
+        <text x="60" y="32" class="body-text">new cases of diabetes mellitus</text>
+        <text x="0" y="52" class="body-text">were identified</text>
+     </g>
+  </g>
+
+  <g id="outcomes" transform="translate(20, 450)">
+    <g id="outcomes-icon" transform="translate(25, 0)">
+        <rect x="0" y="0" width="40" height="40" rx="5" ry="5" class="icon-shape"/>
+        <path d="M5 35 V 20 H 15 V 35 Z M 17 35 V 10 H 27 V 35 Z M 29 35 V 25 H 39 V 35 Z" stroke="white" fill="white"/>
+     </g>
+    <text x="85" y="21" class="subtitle">Results</text>
+  </g>
+
+  <g id="charts-area" transform="translate(20, 500)">
+
+      <g id="sarcopenia-quartiles">
+        <rect x="0" y="0" width="570" height="520" class="card" />
+        <text x="25" y="30" class="chart-title">Sarcopenia index quartiles</text>
+
+        <rect x="350" y="15" width="190" height="80" class="purple-box" />
+        <text x="360" y="35" class="small-white-text">Incidence rate (per 1000 person-years)</text>
+        <text x="360" y="55" class="small-white-text">decreased with increase in</text>
+        <text x="360" y="75" class="small-white-text">sarcopenia index</text>
+
+        <g transform="translate(50, 110)">
+            <rect x="0" y="0" width="500" height="320" fill="var(--white)" stroke="var(--stroke-gray)" />
+ 
+            <text x="20" y="60" class="chart-title">Q1 (&lt; 81.75) </text>
+            <text x="220" y="60" class="body-text">13.75 per 1000 person-years</text>
+ 
+            <text x="20" y="120" class="chart-title">Q2 (81.75-93.28)</text>
+            <text x="220" y="120" class="body-text">13.02 per 1000 person-years</text>
+ 
+            <text x="20" y="180" class="chart-title">Q3 (93.29-106.91)</text>
+            <text x="220" y="180" class="body-text">12.61 per 1000 person-years</text>
+ 
+            <text x="20" y="240" class="chart-title">Q4 (&gt; 106.91)</text>
+            <text x="220" y="240" class="body-text">12.33 per 1000 person-years</text>
+         </g>
+      </g>
+
+      <g id="risk-reduction-chart" transform="translate(610, 0)">
+        <rect x="0" y="0" width="570" height="520" class="card" />
+        <text x="25" y="30" class="chart-title">Risk Reduction Analysis</text>
+        <text x="25" y="55" class="chart-title">Sarcopenia Index and Diabetes Risk</text>
+
+        <rect x="350" y="15" width="190" height="80" class="orange-box" />
+        <text x="360" y="35" class="small-white-text">Linear negative</text>
+        <text x="360" y="55" class="small-white-text">association</text>
+        <text x="360" y="75" class="small-white-text">(P for nonlinearity = 0.489)</text>
+
+        <g id="risk-reduction-details" transform="translate(50, 130)">
+             <rect x="0" y="0" width="500" height="320" fill="var(--white)" stroke="var(--stroke-gray)" />
+
+             <text x="20" y="60" class="chart-title">7.6% reduced risk </text>
+             <text x="220" y="60" class="body-text">of diabetes per 1-SD</text>
+             <text x="220" y="80" class="body-text">increase in sarcopenia index</text>
+             
+             <text x="20" y="140" class="chart-title">Cox regression model</text>
+             <text x="220" y="140" class="body-text">HR = 0.924 (95% CI: 0.875-0.976)</text>
+             <text x="220" y="160" class="body-text">P = 0.005</text>
+             
+             <text x="20" y="220" class="chart-title">Fully adjusted model</text>
+             <text x="220" y="220" class="body-text">Adjusted for age, sex, BMI,</text>
+             <text x="220" y="240" class="body-text">smoking, alcohol, physical activity,</text>
+             <text x="220" y="260" class="body-text">hypertension, and other factors</text>
+         </g>
+      </g>
+  </g>
+
+  <g id="footer" transform="translate(20, 1040)">
+    <rect x="0" y="0" width="230" height="30" fill="var(--primary-blue)" rx="5" ry="5" />
+    <text x="10" y="16" fill="white" class="footer-text">DOI: 10.1186/s40001-025-02405-w</text>
+
+    <text x="450" y="16" class="footer-text">Wang et al. European Journal of Medical Research (2025) 30:151</text>
+
+    <text x="900" y="16" class="footer-text">© 2025 The Author(s)</text>
+  </g>
+</svg>
