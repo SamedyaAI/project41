@@ -906,14 +906,671 @@
 // });
 
 
+
+
+
+//code by ashutosh sir:
+
+// import express from 'express';
+// import multer from 'multer';
+// import cors from 'cors';
+// import { Anthropic } from '@anthropic-ai/sdk';
+// import dotenv from 'dotenv';
+// import { fileURLToPath } from 'url';
+// import { dirname } from 'path';
+// import path from 'path';
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
+
+// // Load environment variables
+// dotenv.config();
+
+// const app = express();
+// const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } }); // 25MB limit
+
+// // Enable CORS and JSON parsing
+// app.use(cors());
+// app.use(express.json({ limit: '50mb' }));
+
+// // Test endpoint
+// app.get('/api/test', (req, res) => {
+//   console.log('I am in testing phase')
+//   res.json({ message: 'API server is working!' });
+// });
+
+// // Initialize Anthropic client
+// const anthropic = new Anthropic({
+//   apiKey: process.env.CLAUDE_API_KEY,
+// });
+
+// // Process PDF endpoint
+// app.post('/api/process-pdf', upload.single('pdfFile'), async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: 'No PDF file provided' });
+//     }
+
+//     const pdfBase64 = req.file.buffer.toString('base64');
+//     const svgTemplate = req.body.svgTemplate;
+    
+//     if (!svgTemplate) {
+//       return res.status(400).json({ error: 'No SVG template specified' });
+//     }
+
+//     console.log(`Processing PDF of size: ${req.file.size} bytes`);
+    
+//     // Analyze SVG template to understand its structure
+//     console.log(`Analyzing SVG template structure...`);
+//     const graphContainers = (svgTemplate.match(/<g[^>]*id=["']([^"']*graph[^"']*)["'][^>]*>/gi) || []).length;
+//     const chartAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*chart[^"']*)["'][^>]*>/gi) || []).length;
+//     const plotAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*plot[^"']*)["'][^>]*>/gi) || []).length;
+    
+//     console.log(`Template contains ${graphContainers} graph containers, ${chartAreas} chart areas, and ${plotAreas} plot areas`);
+    
+//     // First API call - Extract data from PDF
+//     console.log("Step 1: Extracting data from PDF...");
+//     const dataExtractionMessage = await anthropic.messages.create({
+//       model: 'claude-3-5-sonnet-20240620',
+//       max_tokens: 4096,
+//       temperature: 0,
+//       system: "You are an expert at extracting data from research papers. Extract all numeric data, statistics, percentages, and measurements that could be visualized in a graph. Organize this data into clear, structured JSON format.",
+//       messages: [
+//         {
+//           role: 'user',
+//           content: [
+//             {
+//               type: 'document',
+//               source: {
+//                 type: 'base64',
+//                 media_type: 'application/pdf',
+//                 data: pdfBase64,
+//               },
+//             },
+//             {
+//               type: 'text',
+//               text: `Extract all data from this research paper that would be necessary to create visualizations.
+
+// For each data point or set, include:
+// 1. What the data represents
+// 2. All numeric values
+// 3. Units of measurement
+// 4. Statistical significance (p-values)
+// 5. Time points or categories
+// 6. Relationships between variables
+
+// Format your response as JSON with clear keys and organized structure. Include separate sections for:
+// - Primary outcomes
+// - Secondary outcomes
+// - Patient demographics
+// - Any time-series data
+// - Comparative results
+
+// RESPONSE FORMAT: JSON ONLY, no explanations or commentary.`
+//             }
+//           ]
+//         }
+//       ]
+//     });
+    
+//     // Parse the extracted data
+//     let extractedData;
+//     try {
+//       // Try to parse JSON directly from the response
+//       const dataText = dataExtractionMessage.content[0].text.trim();
+      
+//       // Remove any markdown code block markers if present
+//       const jsonText = dataText.replace(/^```json\s*|\s*```$/g, '');
+      
+//       extractedData = JSON.parse(jsonText);
+//       console.log("Successfully parsed extracted data");
+//     } catch (error) {
+//       console.warn("Could not parse JSON from data extraction:", error.message);
+//       extractedData = { error: "Data extraction failed" };
+//     }
+
+//     // Second API call - Generate the SVG with graphs
+//     console.log("Step 2: Generating complete SVG with graphs...");
+//     const message = await anthropic.messages.create({
+//       model: 'claude-3-5-sonnet-20240620',
+//       max_tokens: 4096,
+//       temperature: 0,
+//       system: `You are an expert SVG creator specializing in scientific visualizations. Create complete, valid SVG with properly placed and formatted graphs.`,
+//       messages: [
+//         {
+//           role: 'user',
+//           content: [
+//             {
+//               type: 'document',
+//               source: {
+//                 type: 'base64',
+//                 media_type: 'application/pdf',
+//                 data: pdfBase64,
+//               },
+//             },
+//             {
+//               type: 'text',
+//               text: `Create a complete SVG visual abstract based on this research paper and template.
+
+// Here's the data I've extracted from the paper (use this to ensure accurate visualizations):
+// ${JSON.stringify(extractedData, null, 2)}
+// Fit the extracted content of PDF into the attached svg template.
+// Here's the SVG template:
+// ${svgTemplate}`
+//             }
+//           ]
+//         }
+//       ]
+//     });
+
+//     // Process the SVG response
+//     let svgContent = message.content[0].text.trim();
+    
+//     // Log details about the response
+//     console.log("Response length:", svgContent.length);
+    
+//     // Extract SVG from possible code blocks
+//     if (svgContent.startsWith('```') && svgContent.endsWith('```')) {
+//       const match = svgContent.match(/```(?:xml|svg|html)?\s*([\s\S]*?)\s*```$/);
+//       if (match && match[1]) {
+//         svgContent = match[1].trim();
+//       }
+//     }
+
+//     // Cleanup SVG content
+//     if (svgContent.includes('<?xml')) {
+//       svgContent = svgContent.replace(/^[\s\S]*?(<\?xml)/, '$1');
+//     } else if (svgContent.includes('<svg')) {
+//       svgContent = svgContent.replace(/^[\s\S]*?(<svg)/, '$1');
+//       svgContent = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgContent;
+//     }
+    
+//     if (svgContent.includes('</svg>')) {
+//       svgContent = svgContent.replace(/<\/svg>[\s\S]*$/, '</svg>');
+//     }
+    
+//     // Ensure SVG namespace
+//     if (!svgContent.includes('xmlns="http://www.w3.org/2000/svg"')) {
+//       svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+//     }
+//     function repairSvgAttributes(svgContent) {
+//       return svgContent
+//         // 1. Add missing quotes to attributes (width=100 → width="100")
+//         .replace(/(\w+)=([^"'][^\s>]*)/g, '$1="$2"')
+        
+//         // 2. Fix attributes with single quotes containing double quotes (style='font-family:"Arial"')
+//         .replace(/(\w+)='([^']*)("([^']*)')/g, '$1=\'$2\\$3')
+        
+//         // 3. Fix attributes with double quotes containing single quotes (title="O'Reilly")
+//         .replace(/(\w+)="([^"]*)('([^"]*)")/g, '$1="$2\\$3')
+        
+//         // 4. Fix self-closing tags without proper spacing (<br/> → <br />)
+//         .replace(/(<[^>]+)\/>/g, '$1 />')
+        
+//         // 5. Add missing xmlns attribute to SVG if not present
+//         .replace(/<svg(?!\s+[^>]*xmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+        
+//         // 6. Fix unclosed CDATA sections
+//         .replace(/<!\[CDATA\[(.*?)(?!\]\]>)(?=>)/g, '<![CDATA[$1]]>')
+        
+//         // 7. Fix duplicate attributes by keeping only the first occurrence
+//         .replace(/<([a-zA-Z]+)([^>]*)\s+(\w+)=(['"])(.*?)\4([^>]*)\s+\3=(['"])(.*?)\7/g, '<$1$2 $3=$4$5$4$6')
+        
+//         // 8. Remove invalid characters in XML
+//         .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+        
+//         // 9. Fix missing closing tags by identifying common patterns
+//         .replace(/<(div|span|p|g|text|tspan)([^>]*)>[^<>]*(?!<\/\1>)/g, (match, tag, attrs) => {
+//           return `${match}</${tag}>`;
+//         })
+        
+//         // 10. Fix malformed style attributes
+//         .replace(/style="([^"]*)([^:;{})]+)"/g, (match, prefix, suffix) => {
+//           // Only fix if the style appears malformed (missing property or value)
+//           if (suffix.trim() && !suffix.includes(':')) {
+//             return `style="${prefix}"`;
+//           }
+//           return match;
+//         })
+        
+//         // 11. Fix entities missing semicolons (&amp → &amp;)
+//         .replace(/&(amp|lt|gt|quot|apos)(?![;\w])/g, '&$1;')
+        
+//         // 12. Ensure proper closing tags
+//         .replace(/<([a-zA-Z][a-zA-Z0-9]*)([^/>]*)(?<!\/)>(?:(?!<\/\1>)[\s\S])*?<\/(?!\1)[a-zA-Z][a-zA-Z0-9]*>/g, (match, tag, attrs) => {
+//           // If we find an opening tag without matching closing tag, add proper closing tag
+//           const closingTagIndex = match.lastIndexOf('</');
+//           if (closingTagIndex > 0) {
+//             return match.substring(0, closingTagIndex) + '</' + tag + '>';
+//           }
+//           return match;
+//         });
+//     }
+//     repairSvgAttributes(svgContent)
+//     // Post-processing validation for overlap prevention
+//     // This helps identify if there are elements positioned on top of each other
+//     const textElements = (svgContent.match(/<text[^>]*>/g) || []).length;
+//     const rectElements = (svgContent.match(/<rect[^>]*>/g) || []).length;
+//     const circleElements = (svgContent.match(/<circle[^>]*>/g) || []).length;
+//     const pathElements = (svgContent.match(/<path[^>]*>/g) || []).length;
+//     const lineElements = (svgContent.match(/<line[^>]*>/g) || []).length;
+    
+//     console.log(`SVG contains ${textElements} text elements, ${rectElements} rectangles, ${circleElements} circles, ${pathElements} paths, and ${lineElements} lines`);
+    
+//     // Check for graph content in key sections
+//     const hasGraphContent = svgContent.includes('</rect>') && 
+//                           svgContent.includes('</path>') && 
+//                           (svgContent.match(/<text[^>]*>[0-9.]+<\/text>/g) || []).length > 5;
+    
+//     // Validation for empty sections
+//     const emptySections = [];
+//     const sections = ["Key Findings", "Kidney Function Improvement", "Study Design", "Study Population", "Methods", "Outcomes"];
+    
+//     sections.forEach(section => {
+//       const sectionRegex = new RegExp(`<g[^>]*id=["'][^"']*${section.replace(/\s+/g, '[-_\\s]*')}[^"']*["'][^>]*>[\\s\\S]*?<\\/g>`, 'i');
+//       const sectionMatch = svgContent.match(sectionRegex);
+      
+//       if (sectionMatch) {
+//         const sectionContent = sectionMatch[0];
+//         const hasContent = sectionContent.includes('</text>') || 
+//                           sectionContent.includes('</rect>') || 
+//                           sectionContent.includes('</path>');
+                          
+//         if (!hasContent) {
+//           emptySections.push(section);
+//         }
+//       } else {
+//         emptySections.push(`${section} (not found)`);
+//       }
+//     });
+    
+//     if (emptySections.length > 0) {
+//       console.warn("WARNING: These sections appear to be empty:", emptySections);
+//     }
+
+//     // Return the final SVG with debug info
+//     res.json({ 
+//       svg: svgContent,
+//       debug: {
+//         extractedDataLength: JSON.stringify(extractedData).length,
+//         svgLength: svgContent.length,
+//         textElements,
+//         graphElements: rectElements + circleElements + pathElements + lineElements,
+//         hasGraphContent,
+//         emptySections,
+//         model: 'claude-3-5-sonnet-20240620'
+//       }
+//     });
+    
+//   } catch (error) {
+//     console.error('Error processing file:', error);
+//     res.status(500).json({ 
+//       error: 'Error processing file', 
+//       details: error.message,
+//       stack: error.stack 
+//     });
+//   }
+// });
+
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+//   console.log(`Server listening on port ${PORT}`);
+// });
+
+
+
+
+//code for gemini:
+
+
+
+// import express from 'express';
+// import multer from 'multer';
+// import cors from 'cors';
+// import dotenv from 'dotenv';
+// import { fileURLToPath } from 'url';
+// import { dirname } from 'path';
+// import path from 'path';
+// import fs from 'fs';
+// import os from 'os';
+// import { createPartFromUri, GoogleGenAI } from "@google/genai";
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
+
+// // Load environment variables
+// dotenv.config();
+
+// const app = express();
+// const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } }); // 25MB limit
+
+// // Enable CORS and JSON parsing
+// app.use(cors());
+// app.use(express.json({ limit: '50mb' }));
+
+// // Test endpoint
+// app.get('/api/test', (req, res) => {
+//   console.log('I am in testing phase')
+//   res.json({ message: 'API server is working!' });
+// });
+
+// // Gemini API configuration
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// const GEMINI_MODEL = 'gemini-2.5-pro-preview-03-25';
+// const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// // Process PDF endpoint
+// app.post('/api/process-pdf', upload.single('pdfFile'), async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ error: 'No PDF file provided' });
+//     }
+
+//     const svgTemplate = req.body.svgTemplate;
+    
+//     if (!svgTemplate) {
+//       return res.status(400).json({ error: 'No SVG template specified' });
+//     }
+
+//     console.log(`Processing PDF of size: ${req.file.size} bytes`);
+    
+//     // Analyze SVG template to understand its structure
+//     console.log(`Analyzing SVG template structure...`);
+//     const graphContainers = (svgTemplate.match(/<g[^>]*id=["']([^"']*graph[^"']*)["'][^>]*>/gi) || []).length;
+//     const chartAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*chart[^"']*)["'][^>]*>/gi) || []).length;
+//     const plotAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*plot[^"']*)["'][^>]*>/gi) || []).length;
+    
+//     console.log(`Template contains ${graphContainers} graph containers, ${chartAreas} chart areas, and ${plotAreas} plot areas`);
+    
+//     // Save buffer to temporary file
+//     const tempDir = os.tmpdir();
+//     const tempFilePath = path.join(tempDir, `uploaded-pdf-${Date.now()}.pdf`);
+//     fs.writeFileSync(tempFilePath, req.file.buffer);
+    
+//     console.log(`Saved PDF to temporary file: ${tempFilePath}`);
+    
+//     // First API call - Upload and extract data from PDF using Gemini
+//     console.log("Step 1: Uploading PDF to Gemini...");
+    
+//     const file = await ai.files.upload({
+//       file: tempFilePath,
+//       config: {
+//         displayName: `Research-PDF-${Date.now()}.pdf`,
+//       },
+//     });
+    
+//     // Wait for file processing
+//     console.log("Waiting for file processing...");
+//     let getFile = await ai.files.get({ name: file.name });
+//     while (getFile.state === 'PROCESSING') {
+//       getFile = await ai.files.get({ name: file.name });
+//       console.log(`Current file status: ${getFile.state}`);
+//       console.log('File is still processing, retrying in 2 seconds');
+      
+//       await new Promise((resolve) => {
+//         setTimeout(resolve, 2000);
+//       });
+//     }
+    
+//     if (getFile.state === 'FAILED') {
+//       throw new Error('File processing failed.');
+//     }
+    
+//     console.log("File processed successfully, extracting data...");
+    
+//     // Extract data from PDF
+//     const extractionPrompt = `Extract key terms based on the placeholders defined in the SVG, and summarize the PDF content following the structure outlined by the SVG. here is the svg
+// RESPONSE FORMAT: JSON ONLY, no explanations or commentary.`;
+
+//     const extractionModel = ai.getGenerativeModel({
+//       model: GEMINI_MODEL,
+//       systemInstruction: "You are an expert at extracting data from research papers. Extract all numeric data, statistics, percentages, and measurements that could be visualized in a graph. Organize this data into clear, structured JSON format.",
+//       generationConfig: {
+//         temperature: 0,
+//         maxOutputTokens: 4096
+//       }
+//     });
+    
+//     const extractionContents = [extractionPrompt];
+    
+//     if (getFile.uri && getFile.mimeType) {
+//       const fileContent = createPartFromUri(getFile.uri, getFile.mimeType);
+//       extractionContents.push(fileContent);
+//     }
+    
+//     const extractionResponse = await extractionModel.generateContent({
+//       contents: extractionContents
+//     });
+    
+//     // Parse the extracted data
+//     let extractedData;
+//     try {
+//       // Try to parse JSON directly from the response
+//       const dataText = extractionResponse.response.text().trim();
+      
+//       // Remove any markdown code block markers if present
+//       const jsonText = dataText.replace(/^```json\s*|\s*```$/g, '');
+      
+//       extractedData = JSON.parse(jsonText);
+//       console.log("Successfully parsed extracted data");
+//     } catch (error) {
+//       console.warn("Could not parse JSON from data extraction:", error.message);
+//       extractedData = { error: "Data extraction failed" };
+//     }
+
+//     // Second API call - Generate the SVG with graphs using Gemini
+//     console.log("Step 2: Generating complete SVG with graphs...");
+    
+//     const svgPrompt = `Create a complete SVG visual abstract based on this research paper and template.
+
+// Here's the data I've extracted from the paper (use this to ensure accurate visualizations):
+// ${JSON.stringify(extractedData, null, 2)}
+// Fit the extracted content of PDF into the attached svg template.
+// Here's the SVG template:
+// ${svgTemplate}`;
+    
+//     const svgModel = ai.getGenerativeModel({
+//       model: GEMINI_MODEL,
+//       systemInstruction: "You are an expert SVG creator specializing in scientific visualizations. Create complete, valid SVG with properly placed and formatted graphs.",
+//       generationConfig: {
+//         temperature: 0,
+//         maxOutputTokens: 4096
+//       }
+//     });
+    
+//     const svgContents = [svgPrompt];
+    
+//     if (getFile.uri && getFile.mimeType) {
+//       const fileContent = createPartFromUri(getFile.uri, getFile.mimeType);
+//       svgContents.push(fileContent);
+//     }
+    
+//     const svgResponse = await svgModel.generateContent({
+//       contents: svgContents
+//     });
+    
+//     // Process the SVG response
+//     let svgContent = svgResponse.response.text().trim();
+    
+//     // Clean up temporary file
+//     try {
+//       fs.unlinkSync(tempFilePath);
+//       console.log(`Removed temporary file: ${tempFilePath}`);
+//     } catch (cleanupError) {
+//       console.warn(`Failed to clean up temporary file: ${cleanupError.message}`);
+//     }
+    
+//     // Clean up file from Gemini API
+//     try {
+//       await ai.files.delete({ name: file.name });
+//       console.log(`Deleted file from Gemini API: ${file.name}`);
+//     } catch (deleteError) {
+//       console.warn(`Failed to delete file from Gemini API: ${deleteError.message}`);
+//     }
+    
+//     // Log details about the response
+//     console.log("Response length:", svgContent.length);
+    
+//     // Extract SVG from possible code blocks
+//     if (svgContent.startsWith('```') && svgContent.endsWith('```')) {
+//       const match = svgContent.match(/```(?:xml|svg|html)?\s*([\s\S]*?)\s*```$/);
+//       if (match && match[1]) {
+//         svgContent = match[1].trim();
+//       }
+//     }
+
+//     // Cleanup SVG content
+//     if (svgContent.includes('<?xml')) {
+//       svgContent = svgContent.replace(/^[\s\S]*?(<\?xml)/, '$1');
+//     } else if (svgContent.includes('<svg')) {
+//       svgContent = svgContent.replace(/^[\s\S]*?(<svg)/, '$1');
+//       svgContent = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgContent;
+//     }
+    
+//     if (svgContent.includes('</svg>')) {
+//       svgContent = svgContent.replace(/<\/svg>[\s\S]*$/, '</svg>');
+//     }
+    
+//     // Ensure SVG namespace
+//     if (!svgContent.includes('xmlns="http://www.w3.org/2000/svg"')) {
+//       svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+//     }
+//     function repairSvgAttributes(svgContent) {
+//       return svgContent
+//         // 1. Add missing quotes to attributes (width=100 → width="100")
+//         .replace(/(\w+)=([^"'][^\s>]*)/g, '$1="$2"')
+        
+//         // 2. Fix attributes with single quotes containing double quotes (style='font-family:"Arial"')
+//         .replace(/(\w+)='([^']*)("([^']*)')/g, '$1=\'$2\\$3')
+        
+//         // 3. Fix attributes with double quotes containing single quotes (title="O'Reilly")
+//         .replace(/(\w+)="([^"]*)('([^"]*)")/g, '$1="$2\\$3')
+        
+//         // 4. Fix self-closing tags without proper spacing (<br/> → <br />)
+//         .replace(/(<[^>]+)\/>/g, '$1 />')
+        
+//         // 5. Add missing xmlns attribute to SVG if not present
+//         .replace(/<svg(?!\s+[^>]*xmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+        
+//         // 6. Fix unclosed CDATA sections
+//         .replace(/<!\[CDATA\[(.*?)(?!\]\]>)(?=>)/g, '<![CDATA[$1]]>')
+        
+//         // 7. Fix duplicate attributes by keeping only the first occurrence
+//         .replace(/<([a-zA-Z]+)([^>]*)\s+(\w+)=(['"])(.*?)\4([^>]*)\s+\3=(['"])(.*?)\7/g, '<$1$2 $3=$4$5$4$6')
+        
+//         // 8. Remove invalid characters in XML
+//         .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+        
+//         // 9. Fix missing closing tags by identifying common patterns
+//         .replace(/<(div|span|p|g|text|tspan)([^>]*)>[^<>]*(?!<\/\1>)/g, (match, tag, attrs) => {
+//           return `${match}</${tag}>`;
+//         })
+        
+//         // 10. Fix malformed style attributes
+//         .replace(/style="([^"]*)([^:;{})]+)"/g, (match, prefix, suffix) => {
+//           // Only fix if the style appears malformed (missing property or value)
+//           if (suffix.trim() && !suffix.includes(':')) {
+//             return `style="${prefix}"`;
+//           }
+//           return match;
+//         })
+        
+//         // 11. Fix entities missing semicolons (&amp → &amp;)
+//         .replace(/&(amp|lt|gt|quot|apos)(?![;\w])/g, '&$1;')
+        
+//         // 12. Ensure proper closing tags
+//         .replace(/<([a-zA-Z][a-zA-Z0-9]*)([^/>]*)(?<!\/)>(?:(?!<\/\1>)[\s\S])*?<\/(?!\1)[a-zA-Z][a-zA-Z0-9]*>/g, (match, tag, attrs) => {
+//           // If we find an opening tag without matching closing tag, add proper closing tag
+//           const closingTagIndex = match.lastIndexOf('</');
+//           if (closingTagIndex > 0) {
+//             return match.substring(0, closingTagIndex) + '</' + tag + '>';
+//           }
+//           return match;
+//         });
+//     }
+//     repairSvgAttributes(svgContent)
+//     // Post-processing validation for overlap prevention
+//     // This helps identify if there are elements positioned on top of each other
+//     const textElements = (svgContent.match(/<text[^>]*>/g) || []).length;
+//     const rectElements = (svgContent.match(/<rect[^>]*>/g) || []).length;
+//     const circleElements = (svgContent.match(/<circle[^>]*>/g) || []).length;
+//     const pathElements = (svgContent.match(/<path[^>]*>/g) || []).length;
+//     const lineElements = (svgContent.match(/<line[^>]*>/g) || []).length;
+    
+//     console.log(`SVG contains ${textElements} text elements, ${rectElements} rectangles, ${circleElements} circles, ${pathElements} paths, and ${lineElements} lines`);
+    
+//     // Check for graph content in key sections
+//     const hasGraphContent = svgContent.includes('</rect>') && 
+//                           svgContent.includes('</path>') && 
+//                           (svgContent.match(/<text[^>]*>[0-9.]+<\/text>/g) || []).length > 5;
+    
+//     // Validation for empty sections
+//     const emptySections = [];
+//     const sections = ["Key Findings", "Kidney Function Improvement", "Study Design", "Study Population", "Methods", "Outcomes"];
+    
+//     sections.forEach(section => {
+//       const sectionRegex = new RegExp(`<g[^>]*id=["'][^"']*${section.replace(/\s+/g, '[-_\\s]*')}[^"']*["'][^>]*>[\\s\\S]*?<\\/g>`, 'i');
+//       const sectionMatch = svgContent.match(sectionRegex);
+      
+//       if (sectionMatch) {
+//         const sectionContent = sectionMatch[0];
+//         const hasContent = sectionContent.includes('</text>') || 
+//                           sectionContent.includes('</rect>') || 
+//                           sectionContent.includes('</path>');
+                          
+//         if (!hasContent) {
+//           emptySections.push(section);
+//         }
+//       } else {
+//         emptySections.push(`${section} (not found)`);
+//       }
+//     });
+    
+//     if (emptySections.length > 0) {
+//       console.warn("WARNING: These sections appear to be empty:", emptySections);
+//     }
+
+//     // Return the final SVG with debug info
+//     res.json({ 
+//       svg: svgContent,
+//       debug: {
+//         extractedDataLength: JSON.stringify(extractedData).length,
+//         svgLength: svgContent.length,
+//         textElements,
+//         graphElements: rectElements + circleElements + pathElements + lineElements,
+//         hasGraphContent,
+//         emptySections,
+//         model: GEMINI_MODEL
+//       }
+//     });
+    
+//   } catch (error) {
+//     console.error('Error processing file:', error);
+//     res.status(500).json({ 
+//       error: 'Error processing file', 
+//       details: error.message,
+//       stack: error.stack 
+//     });
+//   }
+// });
+
+// const PORT = process.env.PORT || 3000;
+// app.listen(PORT, () => {
+//   console.log(`Server listening on port ${PORT}`);
+// });
+
+
+
+
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
-import { Anthropic } from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import path from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -921,23 +1578,511 @@ const __dirname = dirname(__filename);
 // Load environment variables
 dotenv.config();
 
+/**
+ * Utility function to check if the SVG content is valid XML
+ * @param {string} svgContent - The SVG content to validate
+ * @returns {object} - Validation result with isValid flag and any error message
+ */
+function validateSvgXml(svgContent) {
+  try {
+    // Simple XML validation checks
+    const result = { isValid: true, errors: [] };
+    
+    // Check for basic XML structure issues
+    if (!svgContent.includes('<?xml')) {
+      result.errors.push('Missing XML declaration');
+    }
+    
+    if (!svgContent.includes('<svg')) {
+      result.errors.push('Missing SVG root element');
+      result.isValid = false;
+    }
+    
+    if (!svgContent.includes('</svg>')) {
+      result.errors.push('Missing SVG closing tag');
+      result.isValid = false;
+    }
+    
+    // Check for unclosed tags (simple check)
+    const openTagsCount = (svgContent.match(/<[a-zA-Z][^/>]*>/g) || []).length;
+    const closeTagsCount = (svgContent.match(/<\/[a-zA-Z][^>]*>/g) || []).length;
+    const selfClosingCount = (svgContent.match(/<[^>]+\/>/g) || []).length;
+    
+    if (openTagsCount !== (closeTagsCount + selfClosingCount)) {
+      result.errors.push(`Tag count mismatch: ${openTagsCount} opening tags, ${closeTagsCount} closing tags, ${selfClosingCount} self-closing tags`);
+      result.isValid = false;
+    }
+    
+    // Check for improperly nested tags (simple check)
+    const tagPattern = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
+    const tags = [];
+    let match;
+    
+    while ((match = tagPattern.exec(svgContent)) !== null) {
+      const fullTag = match[0];
+      const tagName = match[1];
+      
+      if (fullTag.startsWith('</')) {
+        // Closing tag
+        if (tags.length === 0 || tags[tags.length - 1] !== tagName) {
+          result.errors.push(`Improperly nested tag: ${fullTag}`);
+          result.isValid = false;
+        } else {
+          tags.pop();
+        }
+      } else if (!fullTag.endsWith('/>')) {
+        // Opening tag (not self-closing)
+        tags.push(tagName);
+      }
+    }
+    
+    if (tags.length > 0) {
+      result.errors.push(`Unclosed tags: ${tags.join(', ')}`);
+      result.isValid = false;
+    }
+    
+    return result;
+  } catch (e) {
+    return { isValid: false, errors: [`Exception during validation: ${e.message}`] };
+  }
+}
+
+/**
+ * Repairs and cleans SVG attributes and structure
+ * @param {string} svgContent - The SVG content to repair
+ * @returns {string} - Repaired SVG content
+ */
+function repairSvgAttributes(svgContent) {
+  if (!svgContent) return '';
+  
+  // First pass: Fix major structural issues specific to observed problems
+  let fixed = svgContent
+    // Fix common issues in the example SVG
+    .replace(/(<\/svg>)<defs>/g, '<defs>')
+    .replace(/><\/rect>/g, '></rect>')
+    .replace(/><\/circle>/g, '></circle>')
+    .replace(/><\/line>/g, '></line>')
+    .replace(/><\/path>/g, '></path>')
+    .replace(/><\/g>/g, '></g>')
+    .replace(/><text/g, '><text')
+    .replace(/>([^<]+)<\/text>/g, '>$1</text>')
+    
+    // Fix extra > characters
+    .replace(/>>([^<]+)</g, '>$1<')
+    .replace(/>>/g, '>')
+    
+    // Fix incorrectly closed tags
+    .replace(/<\/(\w+)><(\w+)>/g, '</$1>\n<$2>')
+    
+    // Fix tags that are closed before being opened
+    .replace(/<\/(\w+)>(\s*)<\1/g, '</$1>\n$2<$1');
+  
+  // Second pass: Fix attributes and more subtle issues
+  fixed = fixed
+    // 1. Add missing quotes to attributes
+    .replace(/(\w+)=([^"'][^\s>]*)/g, '$1="$2"')
+    
+    // 2. Fix attributes with single quotes containing double quotes
+    .replace(/(\w+)='([^']*)("([^']*)')/g, '$1=\'$2\\$3')
+    
+    // 3. Fix attributes with double quotes containing single quotes
+    .replace(/(\w+)="([^"]*)('([^"]*)")/g, '$1="$2\\$3')
+    
+    // 4. Fix self-closing tags without proper spacing
+    .replace(/(<[^>]+)\/>/g, '$1 />')
+    
+    // 5. Add missing xmlns attribute to SVG
+    .replace(/<svg(?!\s+[^>]*xmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+    
+    // 6. Fix unclosed CDATA sections
+    .replace(/<!\[CDATA\[(.*?)(?!\]\]>)(?=>)/g, '<![CDATA[$1]]>')
+    
+    // 7. Fix duplicate attributes
+    .replace(/<([a-zA-Z]+)([^>]*)\s+(\w+)=(['"])(.*?)\4([^>]*)\s+\3=(['"])(.*?)\7/g, '<$1$2 $3=$4$5$4$6')
+    
+    // 8. Remove invalid characters in XML
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+    
+    // 9. Fix missing closing tags - more comprehensive approach
+    .replace(/<(\w+)([^>]*)>([^<]*)(?!<\/\1>)(<\w+[^>]*>)/g, '<$1$2>$3</$1>$4')
+    
+    // 10. Fix malformed style attributes
+    .replace(/style="([^"]*)([^:;{})]+)"/g, (match, prefix, suffix) => {
+      if (suffix.trim() && !suffix.includes(':')) {
+        return `style="${prefix}"`;
+      }
+      return match;
+    })
+    
+    // 11. Fix entities missing semicolons
+    .replace(/&(amp|lt|gt|quot|apos)(?![;\w])/g, '&$1;')
+    
+    // 12. Handle improperly structured tags (closing where there should be self-closing)
+    .replace(/<(path|line|circle|rect|ellipse)([^>]*)><\/\1>/g, '<$1$2 />')
+    
+    // 13. Fix mismatched opening and closing tags
+    .replace(/<(\w+)([^>]*)>([^<]*)<\/([^>]+)>/g, (match, openTag, attrs, content, closeTag) => {
+      if (openTag !== closeTag) {
+        return `<${openTag}${attrs}>${content}</${openTag}>`;
+      }
+      return match;
+    })
+    
+    // 14. Fix path elements that are missing a closing character / trailing space
+    .replace(/<path([^>]*?)d="([^"]*?)"([^>]*?)>/g, (match, prefix, d, suffix) => {
+      if (!d.trim().endsWith(' ') && !d.trim().endsWith('Z')) {
+        return `<path${prefix}d="${d} "${suffix}>`;
+      }
+      return match;
+    })
+    
+    // 15. Fix stroke attributes missing color values
+    .replace(/<([^>]+) stroke="([^"]*?)">?/g, (match, tag, value) => {
+      if (!value) {
+        return match.replace('stroke=""', 'stroke="black"');
+      }
+      return match;
+    });
+  
+  return fixed;
+}
+
+/**
+ * Cleans up SVG content returned from AI
+ * @param {string} svgContent - The raw SVG content from AI
+ * @returns {string} - Cleaned SVG content
+ */
+function cleanupSvgContent(svgContent) {
+  if (!svgContent) return '';
+  
+  let cleaned = svgContent;
+  
+  // Extract SVG content if it's wrapped in code blocks or other text
+  if (cleaned.includes('```svg')) {
+    cleaned = cleaned.replace(/.*```svg\s*([\s\S]*?)\s*```.*/, '$1');
+  } else if (cleaned.includes('```xml')) {
+    cleaned = cleaned.replace(/.*```xml\s*([\s\S]*?)\s*```.*/, '$1');
+  } else if (cleaned.includes('```')) {
+    cleaned = cleaned.replace(/.*```\s*([\s\S]*?)\s*```.*/, '$1');
+  }
+
+  // Remove any text before <?xml or <svg
+  if (cleaned.includes('<?xml')) {
+    cleaned = cleaned.replace(/^[\s\S]*?(<\?xml)/, '$1');
+  } else if (cleaned.includes('<svg')) {
+    cleaned = cleaned.replace(/^[\s\S]*?(<svg)/, '$1');
+    cleaned = '<?xml version="1.0" encoding="UTF-8"?>\n' + cleaned;
+  }
+  
+  // Remove any text after </svg>
+  if (cleaned.includes('</svg>')) {
+    cleaned = cleaned.replace(/<\/svg>[\s\S]*$/, '</svg>');
+  }
+  
+  // Ensure SVG namespace
+  if (!cleaned.includes('xmlns="http://www.w3.org/2000/svg"')) {
+    cleaned = cleaned.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  
+  // Fix structural issues with improperly placed end tags
+  cleaned = fixSvgStructure(cleaned);
+  
+  return cleaned;
+}
+
+/**
+ * Deep analyzes and fixes SVG structure using a DOM-like approach
+ * @param {string} svgContent - The SVG content to fix
+ * @returns {string} - Structurally fixed SVG content
+ */
+function fixSvgStructure(svgContent) {
+  if (!svgContent) return '';
+  
+  // First, let's do some preliminary cleanup of obvious issues
+  let fixed = svgContent
+    // Fix tags that are split across lines incorrectly
+    .replace(/(<[^>]+)\n([^>]*>)/g, '$1$2')
+    
+    // Fix incorrect tag closures (common in AI-generated SVGs)
+    .replace(/<\/svg><defs>/g, '</defs></svg>')
+    .replace(/<\/rect><g/g, '</rect>\n<g')
+    .replace(/<\/line><text/g, '</line>\n<text')
+    .replace(/<\/circle><text/g, '</circle>\n<text')
+    .replace(/<\/path><text/g, '</path>\n<text');
+  
+  // Build a simple DOM-like structure to track element hierarchy
+  const stack = [];
+  const selfClosingTags = ['path', 'circle', 'rect', 'line', 'ellipse', 'polygon', 'polyline'];
+  
+  // Split into tokens, preserving tags and content
+  const tokens = fixed.split(/(<[^>]*>)/);
+  const result = [];
+  
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i].trim();
+    if (!token) continue;
+    
+    if (token.startsWith('</')) {
+      // Closing tag
+      const tagName = token.match(/<\/([a-zA-Z][a-zA-Z0-9]*)/)?.[1];
+      if (tagName) {
+        // Find matching opening tag in the stack
+        let foundIdx = -1;
+        for (let j = stack.length - 1; j >= 0; j--) {
+          if (stack[j] === tagName) {
+            foundIdx = j;
+            break;
+          }
+        }
+        
+        if (foundIdx >= 0) {
+          // We found a matching opening tag
+          // Close any tags that were opened after this one
+          for (let j = stack.length - 1; j > foundIdx; j--) {
+            result.push(`</${stack[j]}>`);
+          }
+          // Remove all closed tags from stack including this one
+          stack.splice(foundIdx);
+        } else {
+          // No matching opening tag, skip this closing tag
+          continue;
+        }
+      }
+    } else if (token.startsWith('<') && !token.startsWith('<!') && !token.startsWith('<?')) {
+      // Opening tag
+      const isSelftClosing = token.endsWith('/>');
+      if (!isSelftClosing) {
+        const tagName = token.match(/<([a-zA-Z][a-zA-Z0-9]*)/)?.[1];
+        if (tagName) {
+          // Check if this is a tag that should be self-closing
+          if (selfClosingTags.includes(tagName.toLowerCase()) && !token.includes('/>')) {
+            // Convert to self-closing
+            result.push(token.replace(/>$/, ' />'));
+            continue;
+          }
+          
+          stack.push(tagName);
+        }
+      }
+    }
+    
+    result.push(token);
+  }
+  
+  // Close any remaining open tags
+  for (let i = stack.length - 1; i >= 0; i--) {
+    result.push(`</${stack[i]}>`);
+  }
+  
+  return result.join('');
+}
+
 const app = express();
-const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } }); // 25MB limit
+
+// Configure multer with file type validation
+const upload = multer({
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
+  fileFilter: (req, file, cb) => {
+    // Check file type
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Enable CORS and JSON parsing
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
+
+// Create public directory if it doesn't exist
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+// Create an index.html file for SVG testing
+const indexHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Fixer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      font-family: monospace;
+      margin-bottom: 20px;
+      padding: 10px;
+    }
+    button {
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #3367d6;
+    }
+    .preview {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-top: 20px;
+      overflow: auto;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      background: #f0f0f0;
+      cursor: pointer;
+      border: 1px solid #ccc;
+    }
+    .tab.active {
+      background: #4285f4;
+      color: white;
+      border-color: #4285f4;
+    }
+    #errorMsg {
+      color: red;
+      margin-top: 10px;
+    }
+    #svgContainer {
+      max-width: 100%;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>SVG Fixer</h1>
+  <p>Paste your broken SVG below and choose a method to fix it.</p>
+  
+  <div class="tabs">
+    <div class="tab active" data-method="ai">Fix with AI</div>
+    <div class="tab" data-method="regex">Fix with Regex</div>
+  </div>
+  
+  <textarea id="svgInput" placeholder="Paste your SVG here..."></textarea>
+  
+  <button id="fixButton">Fix SVG</button>
+  <button id="clearButton">Clear</button>
+  <button id="downloadButton" disabled>Download Fixed SVG</button>
+  <div id="errorMsg"></div>
+  
+  <h2>Preview</h2>
+  <div class="preview">
+    <div id="svgContainer"></div>
+  </div>
+  
+  <script>
+    let currentMethod = 'ai';
+    let fixedSvg = null;
+    
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentMethod = tab.dataset.method;
+      });
+    });
+    
+    document.getElementById('fixButton').addEventListener('click', async () => {
+      const svgInput = document.getElementById('svgInput').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const svgContainer = document.getElementById('svgContainer');
+      const downloadButton = document.getElementById('downloadButton');
+      
+      if (!svgInput) {
+        errorMsg.textContent = 'Please enter SVG content';
+        return;
+      }
+      
+      try {
+        errorMsg.textContent = 'Processing...';
+        svgContainer.innerHTML = '';
+        downloadButton.disabled = true;
+        
+        const response = await fetch(\`/api/fix-svg?method=\${currentMethod}\`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain'
+          },
+          body: svgInput
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          fixedSvg = result.svg;
+          errorMsg.textContent = result.message || 'SVG fixed successfully';
+          svgContainer.innerHTML = fixedSvg;
+          downloadButton.disabled = false;
+        } else {
+          errorMsg.textContent = result.error || 'Failed to fix SVG';
+          svgContainer.innerHTML = '';
+        }
+      } catch (error) {
+        errorMsg.textContent = 'Error: ' + error.message;
+        svgContainer.innerHTML = '';
+      }
+    });
+    
+    document.getElementById('clearButton').addEventListener('click', () => {
+      document.getElementById('svgInput').value = '';
+      document.getElementById('svgContainer').innerHTML = '';
+      document.getElementById('errorMsg').textContent = '';
+      document.getElementById('downloadButton').disabled = true;
+      fixedSvg = null;
+    });
+    
+    document.getElementById('downloadButton').addEventListener('click', () => {
+      if (!fixedSvg) return;
+      
+      const blob = new Blob([fixedSvg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fixed-svg.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
+`;
+
+fs.writeFileSync(path.join(publicDir, 'index.html'), indexHtml);
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
-  console.log('I am in testing phase')
   res.json({ message: 'API server is working!' });
 });
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+// Check if API key is available
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('Warning: GEMINI_API_KEY environment variable is not set');
+}
 
 // Process PDF endpoint
 app.post('/api/process-pdf', upload.single('pdfFile'), async (req, res) => {
@@ -947,210 +2092,127 @@ app.post('/api/process-pdf', upload.single('pdfFile'), async (req, res) => {
     }
 
     const pdfBase64 = req.file.buffer.toString('base64');
+    const template = req.body.template;
+    
+    if (!template) {
+      return res.status(400).json({ error: 'No template specified' });
+    }
+
+    // Validate SVG template
     const svgTemplate = req.body.svgTemplate;
-    
-    if (!svgTemplate) {
-      return res.status(400).json({ error: 'No SVG template specified' });
+    if (!svgTemplate || !svgTemplate.includes('<svg')) {
+      return res.status(400).json({ error: 'Invalid SVG template' });
     }
 
-    console.log(`Processing PDF of size: ${req.file.size} bytes`);
-    
-    // Analyze SVG template to understand its structure
-    console.log(`Analyzing SVG template structure...`);
-    const graphContainers = (svgTemplate.match(/<g[^>]*id=["']([^"']*graph[^"']*)["'][^>]*>/gi) || []).length;
-    const chartAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*chart[^"']*)["'][^>]*>/gi) || []).length;
-    const plotAreas = (svgTemplate.match(/<g[^>]*id=["']([^"']*plot[^"']*)["'][^>]*>/gi) || []).length;
-    
-    console.log(`Template contains ${graphContainers} graph containers, ${chartAreas} chart areas, and ${plotAreas} plot areas`);
-    
-    // First API call - Extract data from PDF
-    console.log("Step 1: Extracting data from PDF...");
-    const dataExtractionMessage = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
-      max_tokens: 4096,
-      temperature: 0,
-      system: "You are an expert at extracting data from research papers. Extract all numeric data, statistics, percentages, and measurements that could be visualized in a graph. Organize this data into clear, structured JSON format.",
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-            {
-              type: 'text',
-              text: `Extract all data from this research paper that would be necessary to create visualizations.
+    // Initialize Gemini model
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
 
-For each data point or set, include:
-1. What the data represents
-2. All numeric values
-3. Units of measurement
-4. Statistical significance (p-values)
-5. Time points or categories
-6. Relationships between variables
+    // Create image part from PDF
+    const imagePart = {
+      inlineData: {
+        data: pdfBase64,
+        mimeType: "application/pdf"
+      }
+    };
 
-Format your response as JSON with clear keys and organized structure. Include separate sections for:
-- Primary outcomes
-- Secondary outcomes
-- Patient demographics
-- Any time-series data
-- Comparative results
-
-RESPONSE FORMAT: JSON ONLY, no explanations or commentary.`
-            }
-          ]
-        }
-      ]
-    });
-    
-    // Parse the extracted data
-    let extractedData;
-    try {
-      // Try to parse JSON directly from the response
-      const dataText = dataExtractionMessage.content[0].text.trim();
+    // Generate content with a clear instruction for valid SVG
+    const result = await model.generateContent([
+      imagePart,
+      `Please analyze this PDF document and update the following SVG template with the relevant information. 
+      Here's the SVG template: ${svgTemplate}. 
       
-      // Remove any markdown code block markers if present
-      const jsonText = dataText.replace(/^```json\s*|\s*```$/g, '');
-      
-      extractedData = JSON.parse(jsonText);
-      console.log("Successfully parsed extracted data");
-    } catch (error) {
-      console.warn("Could not parse JSON from data extraction:", error.message);
-      extractedData = { error: "Data extraction failed" };
+      IMPORTANT: Return ONLY the complete modified SVG code with no additional text, explanations, or code blocks.
+      Ensure the SVG has proper XML structure with correct opening and closing tags.
+      Do not include any text or explanation outside the SVG code.
+      The SVG must begin with <?xml version="1.0" encoding="UTF-8"?> followed by the <svg> tag.
+      Ensure all elements are properly closed and nested correctly.`
+    ]);
+
+    const response = await result.response;
+    let svgContent = response.text();
+
+    // Validate the SVG response
+    if (!svgContent.includes('<svg') || (!svgContent.trim().startsWith('<?xml') && !svgContent.trim().startsWith('<svg'))) {
+      console.warn('Received invalid SVG response, attempting to extract and repair');
+      console.log('Original SVG content preview:', svgContent.substring(0, 200) + '...');
     }
-
-    // Second API call - Generate the SVG with graphs
-    console.log("Step 2: Generating complete SVG with graphs...");
-    const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
-      max_tokens: 100000,
-      temperature: 0,
-      // system: `You are an expert SVG creator specializing in scientific visualizations. Create complete, valid SVG with properly placed and formatted graphs.`,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-//             {
-//               type: 'text',
-//               text: `Create a complete SVG visual abstract based on this research paper and template.
-
-// Here's the data I've extracted from the paper (use this to ensure accurate visualizations):
-// ${JSON.stringify(extractedData, null, 2)}
-// IMPORTANT :
-// STRICTLY FIT THE PDF into the SVG and DO NOT modify the svg format.
-// Here's the SVG template:
-// ${svgTemplate}`
-//             }
-          ]
-        }
-      ]
-    });
-
-    // Process the SVG response
-    let svgContent = message.content[0].text.trim();
     
-    // Log details about the response
-    console.log("Response length:", svgContent.length);
+    // Apply initial cleanup
+    svgContent = repairSvgAttributes(svgContent);
     
-    // Extract SVG from possible code blocks
-    if (svgContent.startsWith('```') && svgContent.endsWith('```')) {
-      const match = svgContent.match(/```(?:xml|svg|html)?\s*([\s\S]*?)\s*```$/);
-      if (match && match[1]) {
-        svgContent = match[1].trim();
+    // Check if the SVG needs additional fixing by AI
+    let needsAiFix = false;
+    
+    // Simple validation check
+    if (!svgContent.includes('<svg') || !svgContent.includes('</svg>')) {
+      needsAiFix = true;
+      console.log('SVG validation failed: Missing essential SVG tags');
+    } else {
+      // Check for mismatched tags (simple check)
+      const openingTags = (svgContent.match(/<[a-zA-Z][^/>]*>/g) || []).length;
+      const closingTags = (svgContent.match(/<\/[a-zA-Z][^>]*>/g) || []).length;
+      const selfClosingTags = (svgContent.match(/<[^>]+\/>/g) || []).length;
+      
+      if (openingTags !== (closingTags + selfClosingTags)) {
+        needsAiFix = true;
+        console.log(`SVG validation failed: Tag count mismatch (${openingTags} opening, ${closingTags} closing, ${selfClosingTags} self-closing)`);
       }
     }
-
-    // Cleanup SVG content
-    if (svgContent.includes('<?xml')) {
-      svgContent = svgContent.replace(/^[\s\S]*?(<\?xml)/, '$1');
-    } else if (svgContent.includes('<svg')) {
-      svgContent = svgContent.replace(/^[\s\S]*?(<svg)/, '$1');
-      svgContent = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgContent;
-    }
     
-    if (svgContent.includes('</svg>')) {
-      svgContent = svgContent.replace(/<\/svg>[\s\S]*$/, '</svg>');
-    }
-    
-    // Ensure SVG namespace
-    if (!svgContent.includes('xmlns="http://www.w3.org/2000/svg"')) {
-      svgContent = svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-    }
-
-    // Post-processing validation for overlap prevention
-    // This helps identify if there are elements positioned on top of each other
-    const textElements = (svgContent.match(/<text[^>]*>/g) || []).length;
-    const rectElements = (svgContent.match(/<rect[^>]*>/g) || []).length;
-    const circleElements = (svgContent.match(/<circle[^>]*>/g) || []).length;
-    const pathElements = (svgContent.match(/<path[^>]*>/g) || []).length;
-    const lineElements = (svgContent.match(/<line[^>]*>/g) || []).length;
-    
-    console.log(`SVG contains ${textElements} text elements, ${rectElements} rectangles, ${circleElements} circles, ${pathElements} paths, and ${lineElements} lines`);
-    
-    // Check for graph content in key sections
-    const hasGraphContent = svgContent.includes('</rect>') && 
-                          svgContent.includes('</path>') && 
-                          (svgContent.match(/<text[^>]*>[0-9.]+<\/text>/g) || []).length > 5;
-    
-    // Validation for empty sections
-    const emptySections = [];
-    const sections = ["Key Findings", "Kidney Function Improvement", "Study Design", "Study Population", "Methods", "Outcomes"];
-    
-    sections.forEach(section => {
-      const sectionRegex = new RegExp(`<g[^>]*id=["'][^"']*${section.replace(/\s+/g, '[-_\\s]*')}[^"']*["'][^>]*>[\\s\\S]*?<\\/g>`, 'i');
-      const sectionMatch = svgContent.match(sectionRegex);
+    if (needsAiFix) {
+      console.log('Using AI to fix the SVG...');
       
-      if (sectionMatch) {
-        const sectionContent = sectionMatch[0];
-        const hasContent = sectionContent.includes('</text>') || 
-                          sectionContent.includes('</rect>') || 
-                          sectionContent.includes('</path>');
-                          
-        if (!hasContent) {
-          emptySections.push(section);
-        }
-      } else {
-        emptySections.push(`${section} (not found)`);
+      // Use AI to fix complex SVG issues
+      const fixResult = await model.generateContent(`
+        I have an SVG with structural issues that I need you to fix. Please correct the XML/SVG syntax problems.
+        
+        Common problems I'm seeing:
+        1. Extra '>' characters that don't belong (e.g., ">>text" or "></rect>")
+        2. Text elements with unclosed tags
+        3. Improperly nested tags (e.g., "</svg><defs>")
+        4. Missing closing tags for elements
+        5. Self-closing tags that are incorrectly formatted
+        6. Attributes without proper quotes
+        
+        SPECIFIC FIXES NEEDED:
+        - Replace "</svg><defs>" with just "<defs>"
+        - Replace "><text" with "><text"
+        - Replace "></rect>" with "></rect>"
+        - Replace "></circle>" with "></circle>"
+        - Replace "></line>" with "></line>"
+        - Replace "></path>" with "></path>"
+        - Replace "></g>" with "></g>"
+        - Replace ">text</text>" with ">text</text>"
+        - Replace ">>" with ">"
+        - Fix any unclosed elements and ensure proper nesting
+        
+        Return ONLY the corrected SVG code with NO explanation, comments, or markdown. Just return the complete fixed SVG code.
+        
+        Here's the SVG that needs fixing:
+        
+        ${svgContent}
+      `);
+      
+      const fixResponse = await fixResult.response;
+      svgContent = fixResponse.text();
+      
+      // Extract SVG if it's wrapped in markdown code blocks
+      if (svgContent.includes('```')) {
+        svgContent = svgContent.replace(/```(?:xml|svg|html)?\s*([\s\S]*?)\s*```/g, '$1');
       }
-    });
-    
-    if (emptySections.length > 0) {
-      console.warn("WARNING: These sections appear to be empty:", emptySections);
+      
+      // Do a final light cleanup
+      svgContent = cleanupSvgContent(svgContent);
     }
-
-    // Return the final SVG with debug info
-    res.json({ 
-      svg: svgContent,
-      debug: {
-        extractedDataLength: JSON.stringify(extractedData).length,
-        svgLength: svgContent.length,
-        textElements,
-        graphElements: rectElements + circleElements + pathElements + lineElements,
-        hasGraphContent,
-        emptySections,
-        model: 'claude-3-5-sonnet-20240620'
-      }
-    });
     
+    console.log('SVG processing completed');
+    
+    res.json({ svg: svgContent });
   } catch (error) {
     console.error('Error processing file:', error);
     res.status(500).json({ 
       error: 'Error processing file', 
-      details: error.message,
-      stack: error.stack 
+      details: error.message 
     });
   }
 });
@@ -1159,6 +2221,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
 
 
 
